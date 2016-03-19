@@ -2,7 +2,10 @@
 
   var options = {
     el: 'tpl',
-    ext: '.html',
+    ext: {
+      view: '.html',
+      data: '.json'
+    },
     regex: /(?:{{)(.+)(?:}})/g,
     notation: '.',
     binder: 'data-tpl-'
@@ -29,9 +32,26 @@
 
 }(typeof window !== "undefined" ? window : this, function(window, opt) {
 
-  var data = {};
-
   var map = [];
+
+  var storage = (function() {
+    var data = {};
+    return {
+      set: function(key, value) {
+        !!~key.indexOf(opt.notation)
+          ? tpl.fn.parse(key.split(opt.notation), data, value)
+          : data[key] = value;
+      },
+      get: function(key) {
+        !!~key.indexOf(opt.notation)
+          ? tpl.fn.parse(key.split(opt.notation), data)
+          : data[key];
+      },
+      print: function() {
+        return data;
+      }
+    }
+  }());
 
   var getTemplate = function(response) {
     var nodes = response.getElementsByTagName('*');
@@ -63,6 +83,23 @@
   var tpl = {};
 
   tpl.fn = {};
+
+  tpl.fn.pubsub = (function() {
+    var topics = {};
+    return {
+      subscribe: function(topic, listener) {
+        if (!topics[topic]) topics[topic] = [];
+        topics[topic].push(listener);
+      },
+      publish: function(topic) {
+        if (!topics[topic] || !topics[topic].length) return;
+        var args = arguments;
+        topics[topic].forEach(function(listener) {
+          listener.apply(this, args);
+        });
+      }
+    };
+  }());
 
   tpl.fn.request = function(url, fn, json) {
     var request = new XMLHttpRequest();
@@ -96,46 +133,30 @@
     return ref[items[last]];
   };
 
-  tpl.fn.pubsub = (function() {
-    var topics = {};
-    return {
-      subscribe: function(topic, listener) {
-        if (!topics[topic]) topics[topic] = [];
-        topics[topic].push(listener);
-      },
-      publish: function(topic) {
-        if (!topics[topic] || !topics[topic].length) return;
-        var args = arguments;
-        topics[topic].forEach(function(listener) {
-          listener.apply(this, args);
-        });
-      }
-    };
-  }());
-
   tpl.set = function(key, value) {
-    !!~key.indexOf(opt.notation)
-      ? tpl.fn.parse(key.split(opt.notation), data, value)
-      : data[key] = value;
+    storage.set(key, value);
     tpl.fn.pubsub.publish('model:changed', key, value);
   };
 
   tpl.get = function(key) {
-    return !!~key.indexOf(opt.notation)
-      ? tpl.fn.parse(key.split(opt.notation), data)
-      : data[key];
+    return storage.get(key);
   };
 
   tpl.print = function() {
-    return data;
+    return storage.print();
   };
 
-  [].forEach.call(document.getElementsByTagName(opt.el), function(item) {
+  tpl.render = function(item) {
     if (item.nodeName.toLowerCase() !== opt.el) return false;
-    tpl.fn.request(item.id + opt.ext, function(response) {
+    tpl.fn.request(item.id + opt.ext.data, function(response) {
+
+    });
+    tpl.fn.request(item.id + opt.ext.view, function(response) {
       item.outerHTML = getTemplate(response);
     });
-  });
+  };
+
+  [].forEach.call(document.getElementsByTagName(opt.el), tpl.render);
 
   tpl.fn.pubsub.subscribe('model:changed', function(event, key, value) {
     [].filter.call(map, function(item, index) {
@@ -151,7 +172,7 @@
     tpl.set(key, value);
   });
 
-  document.addEventListener('change', function(event) {
+  window.document.addEventListener('change', function(event) {
     tpl.fn.pubsub.publish(
       'view:changed', event.target.dataset.tplValue, event.target.value
     );
