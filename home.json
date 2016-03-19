@@ -1,0 +1,19 @@
+[{
+  "counter": {
+    "block": {
+      "class": "",
+      "text": "Add more numbers!"
+    },
+    "input": {
+      "class": "",
+      "value": 4
+    },
+    "checkbox": {
+      "checked": false
+    },
+    "btn": {
+      "class": "btn-submit",
+      "value": "+1"
+    }
+  }
+}]
