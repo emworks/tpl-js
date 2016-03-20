@@ -140,7 +140,11 @@
         ? fn(this.responseText)
         : tpl.fn.log(this);
     };
-    request.send();
+    try {
+      request.send();
+    } catch (e) {
+      tpl.fn.log(e);
+    }
     request = null;
   };
 
@@ -236,16 +240,23 @@
     return storage.print();
   };
 
+  /**
+   * Get and render component
+   * @param  {HTMLElement} item   Root element
+   */
   tpl.render = function(item) {
-    if (item.nodeName.toLowerCase() !== opt.el) return false;
+    if (!(item instanceof HTMLElement)) return;
+    if (item.nodeName.toLowerCase() !== opt.el) return;
     var path = [opt.root, item.id].join('/') + '/index';
     tpl.fn.request(path + opt.ext.data, function(response) {
+      if (!response) return;
       var data = JSON.parse(response);
       tpl.fn.walk(data, function(key) {
         tpl.fn.merge(tpl.print(), data[key]);
       });
     });
     tpl.fn.request(path + opt.ext.view, function(response) {
+      if (!response) return;
       item.innerHTML = tpl.fn.getView(response, viewHandler);
       item.insertBefore(
         tpl.fn.getStyles(path + opt.ext.styles), item.firstChild
