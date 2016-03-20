@@ -2,6 +2,7 @@
 
   var options = {
     el: 'tpl',
+    root: 'components',
     ext: {
       view: '.html',
       data: '.json',
@@ -237,18 +238,19 @@
 
   tpl.render = function(item) {
     if (item.nodeName.toLowerCase() !== opt.el) return false;
-    tpl.fn.request(item.id + opt.ext.data, function(response) {
+    var path = [opt.root, item.id].join('/') + '/index';
+    tpl.fn.request(path + opt.ext.data, function(response) {
       var data = JSON.parse(response);
       tpl.fn.walk(data, function(key) {
         tpl.fn.merge(tpl.print(), data[key]);
       });
     });
-    tpl.fn.request(item.id + opt.ext.view, function(response) {
+    tpl.fn.request(path + opt.ext.view, function(response) {
       item.innerHTML = tpl.fn.getView(response, viewHandler);
       item.insertBefore(
-        tpl.fn.getStyles(item.id + opt.ext.styles), item.firstChild
+        tpl.fn.getStyles(path + opt.ext.styles), item.firstChild
       );
-      item.appendChild(tpl.fn.getScript(item.id + opt.ext.script));
+      item.appendChild(tpl.fn.getScript(path + opt.ext.script));
     });
   };
 
