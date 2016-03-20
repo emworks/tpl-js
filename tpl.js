@@ -66,56 +66,48 @@
   }());
 
   var viewHandler = function(data) {
-    var doc = new DOMParser().parseFromString(data, "text/html");
-    try {
-      var nodes = doc.body.getElementsByTagName('*');
-    } catch(e) {
-      tpl.fn.log('View is empty at: ' + location.href);
-    }
-    if (typeof nodes === 'undefined') return '';
-    // loop through nodes
-    [].forEach.call(nodes, function(el) {
-      var items = [];
-      // search for allowed attributes inside each node
-      tpl.fn.walk(opt.allowed, function(key) {
-        var attr = opt.allowed[key],
-            string = el.getAttribute(attr.name) || el[attr.name];
-        // remove html tags from attribute
-        string = tpl.fn.stripTags(string, true);
-        if (!string) return;
-        var match = null;
-        // search for placeholders inside current node
-        while (match = opt.regex.placeholder.exec(string)) {
-          var item = match[1].trim(),
-              storageItem = tpl.get(item);
-          // set new storage item if it doesn't exist
-          if (typeof storageItem === 'undefined')
-            tpl.fn.parse(item.split(opt.notation), tpl.print());
-          // update node attribute:
-          // set attribute from storage or
-          // remove attribute if it doesn't exist in storage
-          (el.getAttribute(attr.name) === null)
-            // set/remove for className, innerHTML etc.
-            ? el[attr.name] = storageItem || ''
-            // set/remove for value, checked etc.
-            : (storageItem)
-              ? el.setAttribute(attr.name, storageItem)
-              : el.removeAttribute(attr.name);
-          // set unique id
-          if (el.getAttribute(opt.binder + 'id') === null)
-            el.setAttribute(opt.binder + 'id', map.length);
-          // set binder for attribute
-          el.setAttribute(attr.binder, item);
-          items.push(item);
-        }
+    return tpl.fn.parseDoc(data, function(nodes) {
+      // loop through nodes
+      [].forEach.call(nodes, function(el) {
+        var items = [];
+        // search for allowed attributes inside each node
+        tpl.fn.walk(opt.allowed, function(key) {
+          var attr = opt.allowed[key],
+              string = el.getAttribute(attr.name) || el[attr.name];
+          // remove html tags from attribute
+          string = tpl.fn.stripTags(string, true);
+          if (!string) return;
+          var match = null;
+          // search for placeholders inside current node
+          while (match = opt.regex.placeholder.exec(string)) {
+            var item = match[1].trim(),
+                storageItem = tpl.get(item);
+            // set new storage item if it doesn't exist
+            if (typeof storageItem === 'undefined')
+              tpl.fn.parse(item.split(opt.notation), tpl.print());
+            // update node attribute:
+            // set attribute from storage or
+            // remove attribute if it doesn't exist in storage
+            (el.getAttribute(attr.name) === null)
+              // set/remove for className, innerHTML etc.
+              ? el[attr.name] = storageItem || ''
+              // set/remove for value, checked etc.
+              : (storageItem)
+                ? el.setAttribute(attr.name, storageItem)
+                : el.removeAttribute(attr.name);
+            // set unique id
+            if (el.getAttribute(opt.binder + 'id') === null)
+              el.setAttribute(opt.binder + 'id', map.length);
+            // set binder for attribute
+            el.setAttribute(attr.binder, item);
+            items.push(item);
+          }
+        });
+        map.push(items);
+        items = [];
       });
-      map.push(items);
-      items = [];
     });
-    return doc;
   };
-
-  //typeof el.getAttribute(attr.name) === null
 
   var tpl = {};
 
@@ -193,7 +185,19 @@
   tpl.fn.stripTags = function(string, empty) {
     if (!string || typeof string !== 'string') return;
     var regex = (empty) ? opt.regex.empty : opt.regex.tags;
-    return string.replace(regex, "");
+    return string.replace(regex, '');
+  };
+
+  tpl.fn.parseDoc = function(data, fn) {
+    var doc = new DOMParser().parseFromString(data, 'text/html');
+    try {
+      var nodes = doc.body.getElementsByTagName('*');
+    } catch(e) {
+      tpl.fn.log('Doc is empty at: ' + location.href);
+    }
+    if (typeof nodes === 'undefined') return '';
+    if (typeof fn === 'function') fn.call(this, nodes);
+    return doc;
   };
 
   tpl.fn.getView = function(data, fn) {
