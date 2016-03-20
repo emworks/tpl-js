@@ -15,25 +15,32 @@
       empty: /(<(?:.|\n)*>)/g
     },
     notation: '.',
-    binder: 'data-tpl-'
+    binder: {
+      prefix: 'data-tpl-',
+      unique: 'data-tpl-key'
+    }
   };
 
   options.allowed = {
+    tplId: {
+      name: 'id',
+      binder: options.binder.prefix + 'id'
+    },
     tplClass: {
       name: 'className',
-      binder: options.binder + 'class'
+      binder: options.binder.prefix + 'class'
     },
     tplText: {
       name: 'innerHTML',
-      binder: options.binder + 'text'
+      binder: options.binder.prefix + 'text'
     },
     tplValue: {
       name: 'value',
-      binder: options.binder + 'value'
+      binder: options.binder.prefix + 'value'
     },
     tplChecked: {
       name: 'checked',
-      binder: options.binder + 'checked'
+      binder: options.binder.prefix + 'checked'
     }
   };
 
@@ -42,6 +49,8 @@
     : factory(w, options);
 
 }(typeof window !== 'undefined' ? window : this, function(window, opt) {
+
+  'use strict';
 
   var map = [];
 
@@ -97,8 +106,8 @@
                 ? el.setAttribute(attr.name, storageItem)
                 : el.removeAttribute(attr.name);
             // set unique id
-            if (el.getAttribute(opt.binder + 'id') === null)
-              el.setAttribute(opt.binder + 'id', map.length);
+            if (el.getAttribute(opt.binder.unique) === null)
+              el.setAttribute(opt.binder.unique, map.length);
             // set binder for attribute
             el.setAttribute(attr.binder, item);
             items.push(item);
@@ -247,7 +256,7 @@
   tpl.render = function(item) {
     if (!(item instanceof HTMLElement)) return;
     if (item.nodeName.toLowerCase() !== opt.el) return;
-    var path = [opt.root, item.id].join('/') + '/index';
+    var path = `${ opt.root }/${ item.id }/index`;
     tpl.fn.request(path + opt.ext.data, function(response) {
       if (!response) return;
       var data = JSON.parse(response);
@@ -270,7 +279,7 @@
   tpl.fn.pubsub.subscribe('model:changed', function(event, key, value) {
     [].filter.call(map, function(item, index) {
       if (!~item.indexOf(key)) return;
-      var el = document.querySelector('[' + opt.binder + 'id="' + index + '"]');
+      var el = document.querySelector(`[${ opt.binder.unique }="${ index }"]`);
       tpl.fn.walk(el.dataset, function(attr) {
         if (el.dataset[attr] === key) (value)
           ? el[opt.allowed[attr].name] = value
