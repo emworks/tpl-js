@@ -59,7 +59,7 @@
     return {
       set: function(key, value) {
         if (typeof key === 'undefined') return;
-        !!~key.indexOf(opt.notation)
+        return !!~key.indexOf(opt.notation)
           ? tpl.fn.parse(key.split(opt.notation), data, value)
           : data[key] = value;
       },
@@ -164,14 +164,22 @@
     }
   };
 
-  tpl.fn.parse = function(items, output, value) {
+  tpl.fn.parse = function(items, output, tail) {
     var ref = output || {},
         last = items.length - 1;
     for (var i = 0; i < last; i ++) {
       if (!ref[items[i]]) ref[items[i]] = {};
       ref = ref[items[i]];
     }
-    ref[items[last]] = (typeof value !== 'undefined') ? value : ref[items[last]];
+    switch (typeof tail) {
+      case 'function':
+        ref[items[last]] = tail(ref[items[last]]);
+        break;
+      case 'undefined':
+        break;
+      default:
+        ref[items[last]] = tail;
+    }
     return ref[items[last]];
   };
 
@@ -236,9 +244,16 @@
 
   tpl.log = [];
 
+  /**
+   * Set value of storage key
+   * @param  {string} key     Target key
+   * @param  {*}      value   New value or function to set it
+   * @return {*}              New value
+   */
   tpl.set = function(key, value) {
-    storage.set(key, value);
+    value = storage.set(key, value);
     tpl.fn.pubsub.publish('model:changed', key, value);
+    return value;
   };
 
   tpl.get = function(key) {

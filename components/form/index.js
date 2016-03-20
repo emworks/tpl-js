@@ -5,8 +5,9 @@
   var counterInc = document.getElementById(tpl.get('counter.btn.id'));
 
   counterInc.addEventListener('click', function() {
-    var value = tpl.get('counter.input.value');
-    tpl.set('counter.input.value', ++value);
+    tpl.set('counter.input.value', function(value) {
+      return ++value;
+    });
   });
 
 }());
