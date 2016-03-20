@@ -1,0 +1,8 @@
+.counter {
+  padding: 10px;
+}
+
+.counter input[type="text"] {
+  border: 0 none;
+  border-bottom: 1px solid #000000;
+}

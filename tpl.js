@@ -5,9 +5,14 @@
     ext: {
       view: '.html',
       data: '.json',
+      styles: '.css',
       script: '.js'
     },
-    regex: /(?:{{)(.+)(?:}})/g,
+    regex: {
+      placeholder: /(?:{{)(.+)(?:}})/g,
+      tags: /(<(?:.|\n)*?>)/g,
+      empty: /(<(?:.|\n)*>)/g
+    },
     notation: '.',
     binder: 'data-tpl-'
   };
@@ -18,7 +23,7 @@
       binder: options.binder + 'class'
     },
     tplText: {
-      name: 'textContent',
+      name: 'innerHTML',
       binder: options.binder + 'text'
     },
     tplValue: {
@@ -43,11 +48,13 @@
     var data = {};
     return {
       set: function(key, value) {
+        if (typeof key === 'undefined') return;
         !!~key.indexOf(opt.notation)
           ? tpl.fn.parse(key.split(opt.notation), data, value)
           : data[key] = value;
       },
       get: function(key) {
+        if (typeof key === 'undefined') return;
         return !!~key.indexOf(opt.notation)
           ? tpl.fn.parse(key.split(opt.notation), data)
           : data[key];
@@ -58,20 +65,24 @@
     }
   }());
 
-  var getView = function(response) {
+  var viewHandler = function(data) {
+    var doc = new DOMParser().parseFromString(data, "text/html");
     try {
-      var nodes = response.getElementsByTagName('*');
+      var nodes = doc.body.getElementsByTagName('*');
     } catch(e) {
       tpl.fn.log('View is empty at: ' + location.href);
     }
     if (typeof nodes === 'undefined') return '';
     for (var i = 0; i < nodes.length; i++) {
       var items = [];
+      // loop through allowed attributes
       tpl.fn.walk(opt.allowed, function(attr) {
         var match = null,
-            where = nodes[i][opt.allowed[attr].name] ||
-                    nodes[i].getAttribute(opt.allowed[attr].name);
-        if (match = opt.regex.exec(where)) {
+            string = tpl.fn.stripTags(
+              nodes[i][opt.allowed[attr].name] ||
+              nodes[i].getAttribute(opt.allowed[attr].name), true);
+        if (match = opt.regex.placeholder.exec(string)) {
+          console.log(string, match);
           var item = match[1].trim(),
               tplItem = tpl.get(item);
           if (!tplItem) {
@@ -79,7 +90,8 @@
             nodes[i].removeAttribute(opt.allowed[attr].name);
           }
           else {
-            (typeof nodes[i][opt.allowed[attr].name] !== 'undefined')
+            // console.log(tplItem, nodes[i][opt.allowed[attr].name]);
+            (nodes[i][opt.allowed[attr].name])
               ? nodes[i][opt.allowed[attr].name] = tplItem
               : nodes[i].setAttribute(opt.allowed[attr].name, tplItem);
           }
@@ -92,7 +104,7 @@
       map.push(items);
       items = [];
     }
-    return new XMLSerializer().serializeToString(response);
+    return doc;
   };
 
   var tpl = {};
@@ -116,32 +128,16 @@
     };
   }());
 
-  tpl.fn.request = function(url, fn, type) {
+  tpl.fn.request = function(url, fn) {
     var request = new XMLHttpRequest();
     request.open('GET', url, true);
     request.onreadystatechange = function() {
       if (this.readyState !== 4) return;
-      if (this.status >= 200 && this.status < 400) {
-        var data = null;
-        switch (type) {
-          case "html":
-            data = this.responseXML;
-            break;
-          case "json":
-          case "js":
-            data = this.responseText;
-            break;
-          default:
-            data = this.responseText;
-        }
-        fn(data);
-      }
-      else {
-        tpl.fn.log(this);
-      }
+      (this.status >= 200 && this.status < 400)
+        ? fn(this.responseText)
+        : tpl.fn.log(this);
     };
     request.send();
-    if (type === 'html') request.contentType = 'document';
     request = null;
   };
 
@@ -184,6 +180,25 @@
     if (window.console) console.log([].slice.call(arguments));
   };
 
+  tpl.fn.stripTags = function(string, empty) {
+    if (!string || typeof string !== 'string') return;
+    var regex = (empty) ? opt.regex.empty : opt.regex.tags;
+    return string.replace(regex, "");
+  };
+
+  tpl.fn.getView = function(data, fn) {
+    if (typeof fn === 'function') data = fn(data);
+    return data.body.innerHTML;
+  };
+
+  tpl.fn.getStyles = function(path) {
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = path;
+    return link;
+  };
+
   tpl.fn.getScript = function(path) {
     var script = document.createElement('script');
     script.type = 'text/javascript';
@@ -213,11 +228,14 @@
       tpl.fn.walk(data, function(key) {
         tpl.fn.merge(tpl.print(), data[key]);
       });
-    }, opt.ext.data.slice(1));
+    });
     tpl.fn.request(item.id + opt.ext.view, function(response) {
-      item.innerHTML = getView(response);
+      item.innerHTML = tpl.fn.getView(response, viewHandler);
+      item.insertBefore(
+        tpl.fn.getStyles(item.id + opt.ext.styles), item.firstChild
+      );
       item.appendChild(tpl.fn.getScript(item.id + opt.ext.script));
-    }, opt.ext.view.slice(1));
+    });
   };
 
   [].forEach.call(document.getElementsByTagName(opt.el), tpl.render);
