@@ -4,7 +4,8 @@
     el: 'tpl',
     ext: {
       view: '.html',
-      data: '.json'
+      data: '.json',
+      script: '.js'
     },
     regex: /(?:{{)(.+)(?:}})/g,
     notation: '.',
@@ -57,8 +58,13 @@
     }
   }());
 
-  var getTemplate = function(response) {
-    var nodes = response.getElementsByTagName('*');
+  var getView = function(response) {
+    try {
+      var nodes = response.getElementsByTagName('*');
+    } catch(e) {
+      tpl.fn.log('View is empty at: ' + location.href);
+    }
+    if (typeof nodes === 'undefined') return '';
     for (var i = 0; i < nodes.length; i++) {
       var items = [];
       tpl.fn.walk(opt.allowed, function(attr) {
@@ -110,17 +116,32 @@
     };
   }());
 
-  tpl.fn.request = function(url, fn, json) {
+  tpl.fn.request = function(url, fn, type) {
     var request = new XMLHttpRequest();
     request.open('GET', url, true);
     request.onreadystatechange = function() {
       if (this.readyState !== 4) return;
-      (this.status >= 200 && this.status < 400)
-        ? fn( (json) ? this.responseText : this.responseXML )
-        : console.log(this);
+      if (this.status >= 200 && this.status < 400) {
+        var data = null;
+        switch (type) {
+          case "html":
+            data = this.responseXML;
+            break;
+          case "json":
+          case "js":
+            data = this.responseText;
+            break;
+          default:
+            data = this.responseText;
+        }
+        fn(data);
+      }
+      else {
+        tpl.fn.log(this);
+      }
     };
     request.send();
-    if (!json) request.contentType = 'document';
+    if (type === 'html') request.contentType = 'document';
     request = null;
   };
 
@@ -158,6 +179,20 @@
     fn(target, data);
   };
 
+  tpl.fn.log = function() {
+    tpl.log.push(arguments);
+    if (window.console) console.log([].slice.call(arguments));
+  };
+
+  tpl.fn.getScript = function(path) {
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = path;
+    return script;
+  };
+
+  tpl.log = [];
+
   tpl.set = function(key, value) {
     storage.set(key, value);
     tpl.fn.pubsub.publish('model:changed', key, value);
@@ -174,11 +209,15 @@
   tpl.render = function(item) {
     if (item.nodeName.toLowerCase() !== opt.el) return false;
     tpl.fn.request(item.id + opt.ext.data, function(response) {
-      tpl.fn.merge(tpl.print(), JSON.parse(response)[0]);
-    }, true);
+      var data = JSON.parse(response);
+      tpl.fn.walk(data, function(key) {
+        tpl.fn.merge(tpl.print(), data[key]);
+      });
+    }, opt.ext.data.slice(1));
     tpl.fn.request(item.id + opt.ext.view, function(response) {
-      item.outerHTML = getTemplate(response);
-    });
+      item.innerHTML = getView(response);
+      item.appendChild(tpl.fn.getScript(item.id + opt.ext.script));
+    }, opt.ext.view.slice(1));
   };
 
   [].forEach.call(document.getElementsByTagName(opt.el), tpl.render);
@@ -214,7 +253,6 @@
       default:
         data.key = event.target.dataset.tplValue;
         data.value = event.target.value;
-        break;
     }
     tpl.fn.pubsub.publish(
       'view:changed', data.key, data.value
