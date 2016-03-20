@@ -73,39 +73,49 @@
       tpl.fn.log('View is empty at: ' + location.href);
     }
     if (typeof nodes === 'undefined') return '';
-    for (var i = 0; i < nodes.length; i++) {
+    // loop through nodes
+    [].forEach.call(nodes, function(el) {
       var items = [];
-      // loop through allowed attributes
-      tpl.fn.walk(opt.allowed, function(attr) {
-        var match = null,
-            string = tpl.fn.stripTags(
-              nodes[i][opt.allowed[attr].name] ||
-              nodes[i].getAttribute(opt.allowed[attr].name), true);
-        if (match = opt.regex.placeholder.exec(string)) {
-          console.log(string, match);
+      // search for allowed attributes inside each node
+      tpl.fn.walk(opt.allowed, function(key) {
+        var attr = opt.allowed[key],
+            string = el.getAttribute(attr.name) || el[attr.name];
+        // remove html tags from attribute
+        string = tpl.fn.stripTags(string, true);
+        if (!string) return;
+        var match = null;
+        // search for placeholders inside current node
+        while (match = opt.regex.placeholder.exec(string)) {
           var item = match[1].trim(),
-              tplItem = tpl.get(item);
-          if (!tplItem) {
+              storageItem = tpl.get(item);
+          // set new storage item if it doesn't exist
+          if (typeof storageItem === 'undefined')
             tpl.fn.parse(item.split(opt.notation), tpl.print());
-            nodes[i].removeAttribute(opt.allowed[attr].name);
-          }
-          else {
-            // console.log(tplItem, nodes[i][opt.allowed[attr].name]);
-            (nodes[i][opt.allowed[attr].name])
-              ? nodes[i][opt.allowed[attr].name] = tplItem
-              : nodes[i].setAttribute(opt.allowed[attr].name, tplItem);
-          }
-          if (nodes[i].getAttribute(opt.binder + 'id') === null)
-            nodes[i].setAttribute(opt.binder + 'id', map.length);
-          nodes[i].setAttribute(opt.allowed[attr].binder, item);
+          // update node attribute:
+          // set attribute from storage or
+          // remove attribute if it doesn't exist in storage
+          (el.getAttribute(attr.name) === null)
+            // set/remove for className, innerHTML etc.
+            ? el[attr.name] = storageItem || ''
+            // set/remove for value, checked etc.
+            : (storageItem)
+              ? el.setAttribute(attr.name, storageItem)
+              : el.removeAttribute(attr.name);
+          // set unique id
+          if (el.getAttribute(opt.binder + 'id') === null)
+            el.setAttribute(opt.binder + 'id', map.length);
+          // set binder for attribute
+          el.setAttribute(attr.binder, item);
           items.push(item);
         }
       });
       map.push(items);
       items = [];
-    }
+    });
     return doc;
   };
+
+  //typeof el.getAttribute(attr.name) === null
 
   var tpl = {};
 
