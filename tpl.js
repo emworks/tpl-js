@@ -150,24 +150,25 @@
   /**
    * XMLHttpRequest
    * @param  {string}   url
-   * @param  {Function} fn  Success handler
    */
-  tpl.fn.request = function(url, fn) {
-    var request = new XMLHttpRequest();
-    request.open('GET', url, true);
-    request.onreadystatechange = function() {
-      if (this.readyState !== 4) return;
-      (this.status >= 200 && this.status < 400)
-        ? fn(this.responseText)
-        : tpl.fn.log(this);
-    };
-    try {
-      request.send();
-    } catch (e) {
-      tpl.fn.log(e);
-    }
-    request = null;
-  };
+  tpl.fn.request = function(url) {
+    return new Promise(function(resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.onreadystatechange = function() {
+        if (this.readyState !== 4) return;
+        (this.status >= 200 && this.status < 400)
+          ? resolve(this.responseText)
+          : reject(this.statusText, this.status);
+      };
+      try {
+        xhr.send();
+      } catch (e) {
+        tpl.fn.log(e);
+      }
+      xhr = null;
+    });
+  }
 
   /**
    * For..in wrapper with some options
@@ -406,27 +407,32 @@
     if (item.nodeName.toLowerCase() !== opt.el) return;
     // get path to component
     var path = `${ opt.root }/${ item.id }/index`;
-    // load data from json to storage
-    tpl.fn.request(path + opt.ext.data, (response) => {
-      if (!response) return;
-      var data = JSON.parse(response);
-      tpl.fn.walk(data, (key) => {
-        // merge json data with storage
-        tpl.fn.merge(tpl.print(), data[key]);
-      });
-    });
-    // load template
-    tpl.fn.request(path + opt.ext.view, (response) => {
-      if (!response) return;
-      // insert template to the root element
-      item.innerHTML = tpl.fn.getView(response, viewHandler);
-      // insert component stylesheet
-      item.insertBefore(
-        tpl.fn.getStyles(path + opt.ext.styles), item.firstChild
-      );
-      // insert component script
-      item.appendChild(tpl.fn.getScript(path + opt.ext.script));
-    });
+    // get component
+    Promise.resolve(path + opt.ext.data)
+      .then(tpl.fn.request)
+      // load data from json to storage
+      .then(response => {
+        if (!response) return;
+        var data = JSON.parse(response);
+        tpl.fn.walk(data, (key) => {
+          // merge json data with storage
+          tpl.fn.merge(tpl.print(), data[key]);
+        });
+        return tpl.fn.request(path + opt.ext.view);
+      })
+      // load template
+      .then(response => {
+        if (!response) return;
+        // insert template to the root element
+        item.innerHTML = tpl.fn.getView(response, viewHandler);
+        // insert component stylesheet
+        item.insertBefore(
+          tpl.fn.getStyles(path + opt.ext.styles), item.firstChild
+        );
+        // insert component script
+        item.appendChild(tpl.fn.getScript(path + opt.ext.script));
+      })
+      .catch(error => tpl.fn.log(''));
   };
 
   // render all components on the page
