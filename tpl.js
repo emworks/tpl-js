@@ -111,7 +111,7 @@
           // search for placeholders inside current node
           while (match = opt.regex.placeholder.exec(string)) {
             var item = namespace + match[1].trim(),
-                storageItem = tpl.get(item);
+                storageItem = tpl.get(item).value();
             // set new storage item if it doesn't exist
             if (typeof storageItem === 'undefined')
               tpl.fn.parse(item.split(opt.notation), tpl.print());
@@ -330,6 +330,19 @@
   tpl.log = [];
 
   /**
+   * Object contains current values
+   * @type {Object}
+   */
+  tpl.current = {
+    // selected key
+    'key': null,
+    // value getted from storage
+    'value': null,
+    // HTMLElement
+    'el': null
+  };
+
+  /**
    * Set value of the storage key
    * @param  {string} key     Target key
    * @param  {*}      value   New value or the function to set it
@@ -343,13 +356,56 @@
   };
 
   /**
-   * Get the storage value by key
+   * Set current values:
+   * set key
+   * set value from the storage value by key
+   * set element by id selector
    * @param  {string} key   Target key
-   * @return {*}            Value
+   * @return {object}       tpl object
    * @see storage
    */
   tpl.get = function(key) {
-    return storage.get(key);
+    this.current.key = key;
+    this.current.value = storage.get(key);
+    this.current.el = document.getElementById(this.current.value) || null;
+    return this;
+  };
+
+  /**
+   * Get current value
+   * @return {*}
+   */
+  tpl.value = function() {
+    return this.current.value;
+  }
+
+  /**
+   * Filter and set current element by selector
+   * @param  {string} sel   CSS selector
+   * @return {object}       tpl object
+   */
+  tpl.find = function(sel) {
+    try {
+      this.current.el = this.current.el.querySelector(sel);
+    } catch(e) {
+      tpl.fn.log(e.message);
+    }
+    return this;
+  };
+
+  /**
+   * Add event listener to the current element
+   * @param  {string}   event click/change etc
+   * @param  {Function} fn    Listener function
+   * @return {object}         tpl object
+   */
+  tpl.on = function(event, fn) {
+    try {
+      this.current.el.addEventListener(event, fn);
+    } catch(e) {
+      tpl.fn.log(e.message);
+    }
+    return this;
   };
 
   /**
