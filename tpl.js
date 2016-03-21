@@ -10,6 +10,7 @@
       script: '.js'
     },
     regex: {
+      namespace: /(?:<!--\s*)(?:namespace:)([\w.]+)(?:\s*-->)/g,
       placeholder: /(?:{{)(.+)(?:}})/g,
       tags: /(<(?:.|\n)*?>)/g,
       empty: /(<(?:.|\n)*>)/g
@@ -76,7 +77,11 @@
   }());
 
   var viewHandler = function(data) {
-    return tpl.fn.parseDoc(data, function(nodes) {
+    return tpl.fn.parseDoc(data, function(nodes, data) {
+      // get namespace passed by template
+      var namespace = '';
+      if (namespace = opt.regex.namespace.exec(data))
+        namespace = namespace[1] + '.';
       // loop through nodes
       [].forEach.call(nodes, function(el) {
         var items = [];
@@ -90,7 +95,7 @@
           var match = null;
           // search for placeholders inside current node
           while (match = opt.regex.placeholder.exec(string)) {
-            var item = match[1].trim(),
+            var item = namespace + match[1].trim(),
                 storageItem = tpl.get(item);
             // set new storage item if it doesn't exist
             if (typeof storageItem === 'undefined')
@@ -218,7 +223,7 @@
       tpl.fn.log('Doc is empty at: ' + location.href);
     }
     if (typeof nodes === 'undefined') return '';
-    if (typeof fn === 'function') fn.call(this, nodes);
+    if (typeof fn === 'function') fn.call(this, nodes, data);
     return doc;
   };
 
