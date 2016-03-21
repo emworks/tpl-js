@@ -1,6 +1,6 @@
 ;(function(w, factory) {
 
-  var options = {
+  const OPTIONS = {
     // components HTMLElement placeholder
     el: 'tpl',
     // folder with components
@@ -25,33 +25,23 @@
     }
   };
 
-  // allowed data-binding attributes
-  options.allowed = {
-    tplId: {
-      name: 'id',
-      binder: options.binder.prefix + 'id'
-    },
-    tplClass: {
-      name: 'className',
-      binder: options.binder.prefix + 'class'
-    },
-    tplText: {
-      name: 'innerHTML',
-      binder: options.binder.prefix + 'text'
-    },
-    tplValue: {
-      name: 'value',
-      binder: options.binder.prefix + 'value'
-    },
-    tplChecked: {
-      name: 'checked',
-      binder: options.binder.prefix + 'checked'
-    }
-  };
+  // set allowed data-binding attributes
+  OPTIONS.allowed = [
+    'Id:id',
+    'Class:className',
+    'Text:innerHTML',
+    'Value:value',
+    'Checked:checked'
+  ].map((attr) => attr.split(':')).reduce((obj, attr) =>
+      (obj[`tpl${attr[0]}`] = {
+        name: attr[1],
+        binder: OPTIONS.binder.prefix + attr[0].toLowerCase()
+      }) ? obj : {},
+    {});
 
   (typeof module === 'object' && typeof module.exports === 'object')
-    ? module.exports = factory(w, options)
-    : factory(w, options);
+    ? module.exports = factory(w, OPTIONS)
+    : factory(w, OPTIONS);
 
 }(typeof window !== 'undefined' ? window : this, function(window, opt) {
 
