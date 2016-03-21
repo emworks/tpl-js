@@ -66,22 +66,19 @@
   var storage = (function() {
     var data = {};
     return {
-      set: function(key, value) {
+      set: (key, value) => {
         if (typeof key === 'undefined') return;
         return !!~key.indexOf(opt.notation) // e.g. 'counter.btn.submit'
           ? tpl.fn.parse(key.split(opt.notation), data, value)
           : data[key] = value;
       },
-      //
-      get: function(key) {
+      get: (key) => {
         if (typeof key === 'undefined') return;
         return !!~key.indexOf(opt.notation)
           ? tpl.fn.parse(key.split(opt.notation), data)
           : data[key];
       },
-      print: function() {
-        return data;
-      }
+      print: () => data
     }
   }());
 
@@ -92,16 +89,16 @@
    * @see tpl.fn.getView
    */
   var viewHandler = function(data) {
-    return tpl.fn.parseDoc(data, function(nodes, data) {
+    return tpl.fn.parseDoc(data, (nodes, data) => {
       // get namespace passed by template
       var namespace = '';
       if (namespace = opt.regex.namespace.exec(data))
         namespace = namespace[1] + '.';
       // loop through nodes
-      [].forEach.call(nodes, function(el) {
+      [].forEach.call(nodes, (el) => {
         var items = [];
         // search for allowed attributes inside each node
-        tpl.fn.walk(opt.allowed, function(key) {
+        tpl.fn.walk(opt.allowed, (key) => {
           var attr = opt.allowed[key],
               string = el.getAttribute(attr.name) || el[attr.name];
           // remove html tags from attribute
@@ -155,10 +152,7 @@
       },
       publish: function(topic) {
         if (!topics[topic] || !topics[topic].length) return;
-        var args = arguments;
-        topics[topic].forEach(function(listener) {
-          listener.apply(this, args);
-        });
+        topics[topic].forEach((listener) => listener.apply(this, arguments));
       }
     };
   }());
@@ -231,9 +225,9 @@
    * @param  {object} data    Merging data
    */
   tpl.fn.merge = function(target, data) {
-    var fn = function(target, data) {
+    var fn = (target, data) => {
       var ref = target;
-      tpl.fn.walk(data, function(key) {
+      tpl.fn.walk(data, (key) => {
         try {
           (data[key].constructor === Object)
             ? ref[key] = fn(ref[key], data[key])
@@ -375,9 +369,7 @@
    * Get current value
    * @return {*}
    */
-  tpl.value = function() {
-    return this.current.value;
-  }
+  tpl.value = () => tpl.current.value;
 
   /**
    * Filter and set current element by selector
@@ -413,9 +405,7 @@
    * @return {object} Storage data
    * @see storage
    */
-  tpl.print = function() {
-    return storage.print();
-  };
+  tpl.print = () => storage.print();
 
   /**
    * Get and render component
@@ -427,16 +417,16 @@
     // get path to component
     var path = `${ opt.root }/${ item.id }/index`;
     // load data from json to storage
-    tpl.fn.request(path + opt.ext.data, function(response) {
+    tpl.fn.request(path + opt.ext.data, (response) => {
       if (!response) return;
       var data = JSON.parse(response);
-      tpl.fn.walk(data, function(key) {
+      tpl.fn.walk(data, (key) => {
         // merge json data with storage
         tpl.fn.merge(tpl.print(), data[key]);
       });
     });
     // load template
-    tpl.fn.request(path + opt.ext.view, function(response) {
+    tpl.fn.request(path + opt.ext.view, (response) => {
       if (!response) return;
       // insert template to the root element
       item.innerHTML = tpl.fn.getView(response, viewHandler);
@@ -453,14 +443,14 @@
   [].forEach.call(document.getElementsByTagName(opt.el), tpl.render);
 
   // subscribe on setting new storage key
-  tpl.fn.pubsub.subscribe('model:changed', function(event, key, value) {
+  tpl.fn.pubsub.subscribe('model:changed', (event, key, value) => {
     // search in map for all HTMLElements with changed key
-    [].filter.call(map, function(item, index) {
+    [].filter.call(map, (item, index) => {
       if (!~item.indexOf(key)) return;
       // get changed HTMLElement by unique key
       var el = document.querySelector(`[${ opt.binder.unique }="${ index }"]`);
       // search for changed key in HTMLElement data-binding attributes
-      tpl.fn.walk(el.dataset, function(attr) {
+      tpl.fn.walk(el.dataset, (attr) => {
         // set/remove html attributes depending on the value
         if (el.dataset[attr] === key) (value)
           ? el[opt.allowed[attr].name] = value
@@ -475,27 +465,26 @@
   });
 
   // set up publishing on view changes
-  window.document.addEventListener('change', function(event) {
+  window.document.addEventListener('change', (event) => {
     if (!event.target.dataset) return;
-    var data = {};
+    var data = {},
+        el = event.target;
     // prepare data depending on the type of the form element
-    switch (event.target.type) {
+    switch (el.type) {
       case 'checkbox':
-        data.key = event.target.dataset.tplChecked;
-        data.value = event.target.checked;
+        data.key = el.dataset.tplChecked;
+        data.value = el.checked;
         break;
       case 'text':
-        data.key = event.target.dataset.tplValue;
-        data.value = event.target.value;
+        data.key = el.dataset.tplValue;
+        data.value = el.value;
         break;
       default:
-        data.key = event.target.dataset.tplValue;
-        data.value = event.target.value;
+        data.key = el.dataset.tplValue;
+        data.value = el.value;
     }
     // publish view changes
-    tpl.fn.pubsub.publish(
-      'view:changed', data.key, data.value
-    );
+    tpl.fn.pubsub.publish('view:changed', data.key, data.value);
   });
 
   window.tpl = tpl;
