@@ -48,27 +48,29 @@
   'use strict';
 
   // container for elements with data-binding attributes
-  var map = [];
+  let map = [];
 
   /**
    * Data storage
    */
-  var storage = (function() {
-    var data = {};
+  let storage = (function() {
+    let data = {};
     return {
-      set: (key, value) => {
+      set(key, value) {
         if (typeof key === 'undefined') return;
         return !!~key.indexOf(opt.notation) // e.g. 'counter.btn.submit'
           ? tpl.fn.parse(key.split(opt.notation), data, value)
           : data[key] = value;
       },
-      get: (key) => {
+      get(key) {
         if (typeof key === 'undefined') return;
         return !!~key.indexOf(opt.notation)
           ? tpl.fn.parse(key.split(opt.notation), data)
           : data[key];
       },
-      print: () => data
+      print() {
+        return data;
+      }
     }
   }());
 
@@ -78,26 +80,26 @@
    * @return {Function}     Doc parser
    * @see tpl.fn.getView
    */
-  var viewHandler = function(data) {
+  let viewHandler = function(data) {
     return tpl.fn.parseDoc(data, (nodes, data) => {
       // get namespace passed by template
-      var namespace = '';
+      let namespace = '';
       if (namespace = opt.regex.namespace.exec(data))
         namespace = namespace[1] + '.';
       // loop through nodes
       [].forEach.call(nodes, (el) => {
-        var items = [];
+        let items = [];
         // search for allowed attributes inside each node
         tpl.fn.walk(opt.allowed, (key) => {
-          var attr = opt.allowed[key],
+          let attr = opt.allowed[key],
               string = el.getAttribute(attr.name) || el[attr.name];
           // remove html tags from attribute
           string = tpl.fn.stripTags(string, true);
           if (!string) return;
-          var match = null;
+          let match = null;
           // search for placeholders inside current node
           while (match = opt.regex.placeholder.exec(string)) {
-            var item = namespace + match[1].trim(),
+            let item = namespace + match[1].trim(),
                 storageItem = tpl.get(item).value();
             // set new storage item if it doesn't exist
             if (typeof storageItem === 'undefined')
@@ -126,7 +128,7 @@
     });
   };
 
-  var tpl = {};
+  let tpl = {};
 
   tpl.fn = {};
 
@@ -134,13 +136,13 @@
    * Pub/sub
    */
   tpl.fn.pubsub = (function() {
-    var topics = {};
+    let topics = {};
     return {
-      subscribe: function(topic, listener) {
+      subscribe(topic, listener) {
         if (!topics[topic]) topics[topic] = [];
         topics[topic].push(listener);
       },
-      publish: function(topic) {
+      publish(topic) {
         if (!topics[topic] || !topics[topic].length) return;
         topics[topic].forEach((listener) => listener.apply(this, arguments));
       }
@@ -153,7 +155,7 @@
    */
   tpl.fn.request = function(url) {
     return new Promise(function(resolve, reject) {
-      var xhr = new XMLHttpRequest();
+      let xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.onreadystatechange = function() {
         if (this.readyState !== 4) return;
@@ -177,7 +179,7 @@
    * @param  {boolean}  check If true check for hasOwnProperty
    */
   tpl.fn.walk = function(obj, fn, check) {
-    for (var prop in obj) {
+    for (let prop in obj) {
       if (check && obj.hasOwnProperty(prop)) continue;
       if (typeof fn === 'function') fn(prop);
     }
@@ -191,9 +193,9 @@
    * @return {*}              Last item
    */
   tpl.fn.parse = function(items, output, tail) {
-    var ref = output || {},
+    let ref = output || {},
         last = items.length - 1;
-    for (var i = 0; i < last; i ++) {
+    for (let i = 0; i < last; i ++) {
       if (!ref[items[i]]) ref[items[i]] = {};
       ref = ref[items[i]];
     }
@@ -216,8 +218,8 @@
    * @param  {object} data    Merging data
    */
   tpl.fn.merge = function(target, data) {
-    var fn = (target, data) => {
-      var ref = target;
+    let fn = (target, data) => {
+      let ref = target;
       tpl.fn.walk(data, (key) => {
         try {
           (data[key].constructor === Object)
@@ -247,7 +249,7 @@
    */
   tpl.fn.stripTags = function(string, empty) {
     if (!string || typeof string !== 'string') return;
-    var regex = (empty) ? opt.regex.empty : opt.regex.tags;
+    let regex = (empty) ? opt.regex.empty : opt.regex.tags;
     return string.replace(regex, '');
   };
 
@@ -258,10 +260,11 @@
    * @return {HTMLDocument}   Handled document
    */
   tpl.fn.parseDoc = function(data, fn) {
-    var doc = new DOMParser().parseFromString(data, 'text/html');
+    let doc = new DOMParser().parseFromString(data, 'text/html');
+    let nodes = null;
     try {
       // get all document nodes
-      var nodes = doc.body.getElementsByTagName('*');
+      nodes = doc.body.getElementsByTagName('*');
     } catch(e) {
       tpl.fn.log('Doc is empty at: ' + location.href);
     }
@@ -288,7 +291,7 @@
    * @return {HTMLElement}  Link tag
    */
   tpl.fn.getStyles = function(path) {
-    var link = document.createElement('link');
+    let link = document.createElement('link');
     link.rel = 'stylesheet';
     link.type = 'text/css';
     link.href = path;
@@ -301,7 +304,7 @@
    * @return {HTMLElement}  Script tag
    */
   tpl.fn.getScript = function(path) {
-    var script = document.createElement('script');
+    let script = document.createElement('script');
     script.type = 'text/javascript';
     script.src = path;
     return script;
@@ -406,14 +409,14 @@
     if (!(item instanceof HTMLElement)) return;
     if (item.nodeName.toLowerCase() !== opt.el) return;
     // get path to component
-    var path = `${ opt.root }/${ item.id }/index`;
+    let path = `${ opt.root }/${ item.id }/index`;
     // get component
     Promise.resolve(path + opt.ext.data)
       .then(tpl.fn.request)
       // load data from json to storage
       .then(response => {
         if (!response) return;
-        var data = JSON.parse(response);
+        let data = JSON.parse(response);
         tpl.fn.walk(data, (key) => {
           // merge json data with storage
           tpl.fn.merge(tpl.print(), data[key]);
@@ -444,7 +447,7 @@
     [].filter.call(map, (item, index) => {
       if (!~item.indexOf(key)) return;
       // get changed HTMLElement by unique key
-      var el = document.querySelector(`[${ opt.binder.unique }="${ index }"]`);
+      let el = document.querySelector(`[${ opt.binder.unique }="${ index }"]`);
       // search for changed key in HTMLElement data-binding attributes
       tpl.fn.walk(el.dataset, (attr) => {
         // set/remove html attributes depending on the value
@@ -463,7 +466,7 @@
   // set up publishing on view changes
   window.document.addEventListener('change', (event) => {
     if (!event.target.dataset) return;
-    var data = {},
+    let data = {},
         el = event.target;
     // prepare data depending on the type of the form element
     switch (el.type) {
