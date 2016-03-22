@@ -12,9 +12,16 @@
       "checked": false
     },
     "btn": {
-      "id": "counter-increment",
-      "class": "btn-submit",
-      "value": "+1"
+      "inc": {
+        "id": "counter-increment",
+        "class": "btn-submit",
+        "value": "+1"
+      },
+      "dec": {
+        "id": "counter-decrement",
+        "class": "btn-submit",
+        "value": "-1"
+      }
     }
   }
 }]

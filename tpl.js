@@ -323,11 +323,11 @@
    */
   tpl.current = {
     // selected key
-    'key': null,
+    key: null,
     // value getted from storage
-    'value': null,
+    value: null,
     // HTMLElement
-    'el': null
+    el: null
   };
 
   /**
@@ -338,8 +338,16 @@
    * @see storage
    */
   tpl.set = function(key, value) {
+    // define short helper
+    let publish = (k, v) => tpl.fn.pubsub.publish('model:changed', k, v);
+    // set new storage value and update variable
     value = storage.set(key, value);
-    tpl.fn.pubsub.publish('model:changed', key, value);
+    // check if new value is object
+    (value !== null && typeof value === 'object')
+      // if true loop through the first level and publish each property
+      ? tpl.fn.walk(value, (item) => publish(`${key}.${item}`, value[item]))
+      // else just publish new value
+      : publish(key, value);
     return value;
   };
 
@@ -417,10 +425,8 @@
       .then(response => {
         if (!response) return;
         let data = JSON.parse(response);
-        tpl.fn.walk(data, (key) => {
-          // merge json data with storage
-          tpl.fn.merge(tpl.print(), data[key]);
-        });
+        // merge json data with storage
+        tpl.fn.walk(data, (key) => tpl.fn.merge(tpl.print(), data[key]));
         return tpl.fn.request(path + opt.ext.view);
       })
       // load template
