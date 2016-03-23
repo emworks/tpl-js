@@ -1,5 +1,9 @@
 ;(function(w, factory) {
 
+  /**
+   * General options
+   * @type {Object}
+   */
   const OPTIONS = {
     // components HTMLElement placeholder
     el: 'tpl',
@@ -13,9 +17,17 @@
       script: '.js'
     },
     regex: {
+      // get namespace from view
+      // e.g. <!-- namespace:someVar --> => someVar
       namespace: /(?:<!--\s*)(?:namespace:)([\w.]+)(?:\s*-->)/g,
+      // get variable from view
+      // e.g. {{ someVar }} => someVar
       placeholder: /(?:{{)(.+)(?:}})/g,
+      // cut html tags
+      // e.g. This is <span>the text</span> => This is the text
       tags: /(<(?:.|\n)*?>)/g,
+      // cut html tags and inner text
+      // e.g. Hello<span>, world</span>! => Hello!
       empty: /(<(?:.|\n)*>)/g
     },
     notation: '.',
@@ -26,6 +38,7 @@
   };
 
   // set allowed data-binding attributes
+  // [data attribute postfix]:[element attribute]
   OPTIONS.allowed = [
     'Id:id',
     'Class:className',
@@ -37,7 +50,7 @@
         name: attr[1],
         binder: OPTIONS.binder.prefix + attr[0].toLowerCase()
       }) ? obj : {},
-    {});
+    {}); // Id:id => tplId: { name: "id", binder: "data-tpl-id" }
 
   (typeof module === 'object' && typeof module.exports === 'object')
     ? module.exports = factory(w, OPTIONS)

@@ -1,3 +1,3 @@
 # tpl.js
 
-Simple two-way data-binding template engine. Draft.
+Playing around Pub/Sub pattern to create a simple two-way data-binding template engine for components.
