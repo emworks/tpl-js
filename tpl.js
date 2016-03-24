@@ -44,7 +44,8 @@
     'Class:className',
     'Text:innerHTML',
     'Value:value',
-    'Checked:checked'
+    'Checked:checked',
+    'Height:height'
   ].map((attr) => attr.split(':')).reduce((obj, attr) =>
       (obj[`tpl${attr[0]}`] = {
         name: attr[1],
@@ -88,6 +89,33 @@
   }());
 
   /**
+   * Update node attribute
+   * set attribute from storage or
+   * remove attribute if it doesn't exist in storage
+   * @param  {HTMLElement} el   node for update
+   * @param  {object} self      params
+   * @param  {*} value          new value
+   * @return {HTMLElement}      return updated node
+   */
+  let updateNodeAttribute = function(el, self, value) {
+    // check if attribute exists
+    (el.getAttribute(self.attr.name) === null)
+      // set/remove for className, innerHTML etc.
+      ? el[self.attr.name] = value || ''
+      // set/remove for value, checked etc.
+      : (value)
+        ? el.setAttribute(self.attr.name, value)
+        : el.removeAttribute(self.attr.name);
+    // set unique id
+    if (el.getAttribute(opt.binder.unique) === null)
+      el.setAttribute(opt.binder.unique, self.unique);
+    // set binder for attribute
+    el.setAttribute(self.attr.binder, self.item);
+    self.items.push(self.item);
+    return el;
+  };
+
+  /**
    * Handler for getView function
    * @param  {string} data  Template
    * @return {Function}     Doc parser
@@ -96,47 +124,45 @@
   let viewHandler = function(data) {
     return tpl.fn.parseDoc(data, (nodes, data) => {
       // get namespace passed by template
-      let namespace = '';
+      let namespace = '',
+          self = {};
       if (namespace = opt.regex.namespace.exec(data))
         namespace = namespace[1] + '.';
       // loop through nodes
       [].forEach.call(nodes, (el) => {
-        let items = [];
+        self.items = [];
+        self.unique = map.length;
         // search for allowed attributes inside each node
         tpl.fn.walk(opt.allowed, (key) => {
-          let attr = opt.allowed[key],
-              string = el.getAttribute(attr.name) || el[attr.name];
+          self.attr = opt.allowed[key];
+          let string = el.getAttribute(self.attr.name) || el[self.attr.name];
           // remove html tags from attribute
           string = tpl.fn.stripTags(string, true);
           if (!string) return;
           let match = null;
           // search for placeholders inside current node
           while (match = opt.regex.placeholder.exec(string)) {
-            let item = namespace + match[1].trim(),
-                storageItem = tpl.get(item).value();
+            self.item = namespace + match[1].trim();
+            let storageItem = tpl.get(self.item).value();
             // set new storage item if it doesn't exist
             if (typeof storageItem === 'undefined')
-              tpl.fn.parse(item.split(opt.notation), tpl.print());
-            // update node attribute:
-            // set attribute from storage or
-            // remove attribute if it doesn't exist in storage
-            (el.getAttribute(attr.name) === null)
-              // set/remove for className, innerHTML etc.
-              ? el[attr.name] = storageItem || ''
-              // set/remove for value, checked etc.
-              : (storageItem)
-                ? el.setAttribute(attr.name, storageItem)
-                : el.removeAttribute(attr.name);
-            // set unique id
-            if (el.getAttribute(opt.binder.unique) === null)
-              el.setAttribute(opt.binder.unique, map.length);
-            // set binder for attribute
-            el.setAttribute(attr.binder, item);
-            items.push(item);
+              tpl.fn.parse(self.item.split(opt.notation), tpl.print());
+            // check if storage item is array
+            (Array.isArray(storageItem))
+              // if true replace current node by clones using array values
+              ? el.outerHTML = storageItem.reduce((result, value, index) =>
+                  // update node then clone it and put into result div
+                  (result.appendChild(updateNodeAttribute(el, self, value)
+                    .cloneNode(true)) && index !== storageItem.length - 1)
+                    // return current result if current value is not last
+                    // or return resulted nodes for replacing
+                    ? result : result.innerHTML
+                , document.createElement('div'))
+              // else update current node
+              : updateNodeAttribute(el, self, storageItem);
           }
         });
-        map.push(items);
-        items = [];
+        map.push(self.items);
       });
     });
   };
