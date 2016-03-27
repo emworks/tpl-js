@@ -22,7 +22,7 @@
       namespace: /(?:<!--\s*)(?:namespace:)([\w.]+)(?:\s*-->)/g,
       // get variable from view
       // e.g. {{ someVar }} => someVar
-      placeholder: /(?:{{)(.+)(?:}})/g,
+      placeholder: /(?:{{\s*)(.+?)(?:\s*}})/g,
       // cut html tags
       // e.g. This is <span>the text</span> => This is the text
       tags: /(<(?:.|\n)*?>)/g,
@@ -151,11 +151,11 @@
             (Array.isArray(storageItem))
               // if true replace current node by clones using array values
               ? el.outerHTML = storageItem.reduce((result, value, index) =>
-                  // update node then clone it and put into result div
+                  // update node then clone it and put into the result div
                   (result.appendChild(updateNodeAttribute(el, self, value)
                     .cloneNode(true)) && index !== storageItem.length - 1)
                     // return current result if current value is not last
-                    // or return resulted nodes for replacing
+                    // else return resulted nodes for replacing
                     ? result : result.innerHTML
                 , document.createElement('div'))
               // else update current node
